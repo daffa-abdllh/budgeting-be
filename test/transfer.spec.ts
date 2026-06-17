@@ -195,6 +195,79 @@ describe("Wallet Transfer Unit Tests", () => {
             wallet_name: "Wallet A"
         });
     });
+
+    it("should filter transactions by TRANSFER, IN, or OUT types correctly", async () => {
+        // 1. Create a regular transaction (IN / Income)
+        await db.insert(transactions).values({
+            id: "tx-inc",
+            user_id: "user1",
+            wallet_id: "w1",
+            type: "IN",
+            description: "Salary",
+            amount: 5000,
+            transaction_date: "2026-06-17",
+            is_deleted: false
+        });
+
+        // 2. Create a transfer
+        await createTransfer(db, "user1", {
+            source_wallet_id: "w1",
+            destination_wallet_id: "w2",
+            amount: 1000,
+            description: "Pocket money",
+            transaction_date: "2026-06-17"
+        });
+
+        // 3. Query TRANSFER transactions
+        const transferResult = await getAllTransactions(db, "user1", { type: "TRANSFER" });
+        expect(transferResult.data).toHaveLength(2); // OUT and IN sides of the transfer
+        expect(transferResult.data.every((t: any) => t.linked_transaction_id !== null)).toBe(true);
+
+        // 4. Query IN transactions
+        const inResult = await getAllTransactions(db, "user1", { type: "IN" });
+        expect(inResult.data).toHaveLength(1); // Salary only (not the IN side of the transfer)
+        expect(inResult.data[0].id).toBe("tx-inc");
+
+        // 5. Query OUT transactions
+        const outResult = await getAllTransactions(db, "user1", { type: "OUT" });
+        expect(outResult.data).toHaveLength(0); // 0 (regular expenses only)
+    });
+
+    it("should filter transactions by year_month correctly", async () => {
+        // 1. Create a transaction in 2026-06
+        await db.insert(transactions).values({
+            id: "tx-jun",
+            user_id: "user1",
+            wallet_id: "w1",
+            type: "IN",
+            description: "June Salary",
+            amount: 5000,
+            transaction_date: "2026-06-15",
+            is_deleted: false
+        });
+
+        // 2. Create a transaction in 2026-07
+        await db.insert(transactions).values({
+            id: "tx-jul",
+            user_id: "user1",
+            wallet_id: "w1",
+            type: "IN",
+            description: "July Salary",
+            amount: 5500,
+            transaction_date: "2026-07-02",
+            is_deleted: false
+        });
+
+        // 3. Query transactions for 2026-06
+        const junResult = await getAllTransactions(db, "user1", { year_month: "2026-06" });
+        expect(junResult.data).toHaveLength(1);
+        expect(junResult.data[0].id).toBe("tx-jun");
+
+        // 4. Query transactions for 2026-07
+        const julResult = await getAllTransactions(db, "user1", { year_month: "2026-07" });
+        expect(julResult.data).toHaveLength(1);
+        expect(julResult.data[0].id).toBe("tx-jul");
+    });
 });
 
 // Helper to assert equality in tests since eq is imported from drizzle-orm

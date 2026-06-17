@@ -5,7 +5,7 @@ import { TransactionInputType, TransferInputType } from "./transaction.schema";
 import { transactions } from "./transaction.table";
 import { wallets } from "../wallet/wallet.table";
 import { budgets } from "../budget/budget.table";
-import { and, eq, inArray, like } from "drizzle-orm";
+import { and, eq, inArray, like, isNull, isNotNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 const linkedTransactions = alias(transactions, "linked_transactions");
@@ -60,7 +60,7 @@ export const createTransaction = async (db: DrizzleD1, user_id: string, data: Tr
 export const getAllTransactions = async (
     db: DrizzleD1,
     user_id: string,
-    options: { page?: number; limit?: number; wallet_id?: string; type?: "IN" | "OUT"; search?: string }
+    options: { page?: number; limit?: number; wallet_id?: string; type?: "IN" | "OUT" | "TRANSFER"; search?: string; year_month?: string }
 ) => {
     let whereClause = and(
         eq(transactions.user_id, user_id),
@@ -71,10 +71,21 @@ export const getAllTransactions = async (
         whereClause = and(whereClause, eq(transactions.wallet_id, options.wallet_id));
     }
     if (options.type) {
-        whereClause = and(whereClause, eq(transactions.type, options.type));
+        if (options.type === "TRANSFER") {
+            whereClause = and(whereClause, isNotNull(transactions.linked_transaction_id));
+        } else {
+            whereClause = and(
+                whereClause,
+                eq(transactions.type, options.type),
+                isNull(transactions.linked_transaction_id)
+            );
+        }
     }
     if (options.search) {
         whereClause = and(whereClause, like(transactions.description, `%${options.search}%`));
+    }
+    if (options.year_month) {
+        whereClause = and(whereClause, like(transactions.transaction_date, `${options.year_month}-%`));
     }
 
     const result = await findManyWithIdPagination(

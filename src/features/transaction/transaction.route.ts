@@ -30,15 +30,20 @@ export const transactionRoutes = new Hono<AppEnv>()
         return c.api.success(result, "Success create new transfer.", 201);
     })
     .get("/transactions", async (c) => {
-        const { page, limit, wallet_id, type, search } = c.req.query();
+        const { page, limit, wallet_id, type, search, year_month } = c.req.query();
         const { id } = c.get("user");
+
+        if (year_month && !/^\d{4}-\d{2}$/.test(year_month)) {
+            return c.api.error("Invalid year_month format. Use YYYY-MM.", 400);
+        }
 
         const { data, pagination } = await getAllTransactions(db(c.env.DB), id, {
             page: page ? Number(page) : undefined,
             limit: limit ? Number(limit) : undefined,
             wallet_id,
-            type: type as "IN" | "OUT" | undefined,
-            search
+            type: type as "IN" | "OUT" | "TRANSFER" | undefined,
+            search,
+            year_month
         });
 
         return c.api.success(data, "Success get all transactions.", 200, pagination);
