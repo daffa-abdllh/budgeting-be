@@ -3,9 +3,10 @@ import { AppEnv } from "../../config/env";
 import { apiMiddleware } from "../../middleware/api/api.middleware";
 import { isLoggedIn } from "../../middleware/auth/auth.middleware";
 import { zValidator } from "../../middleware/api/api.validationError";
-import { transactionSchema } from "./transaction.schema";
+import { transactionSchema, transferSchema } from "./transaction.schema";
 import {
     createTransaction,
+    createTransfer,
     deleteTransaction,
     getAllTransactions,
     updateTransaction
@@ -20,6 +21,13 @@ export const transactionRoutes = new Hono<AppEnv>()
 
         const result = await createTransaction(db(c.env.DB), id, body);
         return c.api.success(result, "Success create new transaction.", 201);
+    })
+    .post("/transactions/transfer", zValidator("json", transferSchema), async (c) => {
+        const body = c.req.valid("json");
+        const { id } = c.get("user");
+
+        const result = await createTransfer(db(c.env.DB), id, body);
+        return c.api.success(result, "Success create new transfer.", 201);
     })
     .get("/transactions", async (c) => {
         const { page, limit, wallet_id, budget_id, type, search } = c.req.query();

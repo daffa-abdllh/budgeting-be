@@ -17,14 +17,16 @@ export const transactions = sqliteTable("transactions", {
         .notNull()
         .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
     updated_at: text("updated_at"),
-    deleted_at: text("deleted_at")
+    deleted_at: text("deleted_at"),
+    linked_transaction_id: text("linked_transaction_id")
 }, (table) => {
     return {
         idxTransactionIsDeleted: index("idx_transaction_is_deleted").on(table.is_deleted),
         idxTransactionUserId: index("idx_transaction_user_id").on(table.user_id),
         idxTransactionWalletId: index("idx_transaction_wallet_id").on(table.wallet_id),
         idxTransactionBudgetId: index("idx_transaction_budget_id").on(table.budget_id),
-        idxTransactionDate: index("idx_transaction_date").on(table.transaction_date)
+        idxTransactionDate: index("idx_transaction_date").on(table.transaction_date),
+        idxTransactionLinkedId: index("idx_transaction_linked_id").on(table.linked_transaction_id)
     }
 });
 

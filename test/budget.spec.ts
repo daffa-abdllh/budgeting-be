@@ -12,9 +12,10 @@ import sql4 from "../src/database/migrations/0004_productive_william_stryker.sql
 import sql5 from "../src/database/migrations/0005_familiar_magdalene.sql?raw";
 import sql6 from "../src/database/migrations/0006_lucky_black_tom.sql?raw";
 import sql7 from "../src/database/migrations/0007_melted_tinkerer.sql?raw";
+import sql8 from "../src/database/migrations/0008_unique_lord_hawal.sql?raw";
 
 const applyMigrations = async (d1: D1Database) => {
-    const migrations = [sql0, sql1, sql2, sql3, sql4, sql5, sql6, sql7];
+    const migrations = [sql0, sql1, sql2, sql3, sql4, sql5, sql6, sql7, sql8];
     for (const sql of migrations) {
         const statements = sql.split("--> statement-breakpoint");
         for (const statement of statements) {
