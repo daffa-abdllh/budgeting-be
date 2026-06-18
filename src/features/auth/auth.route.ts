@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import { AppEnv } from "../../config/env";
 import { apiMiddleware } from "../../middleware/api/api.middleware";
 import { zValidator } from "../../middleware/api/api.validationError";
@@ -50,9 +51,39 @@ export const authRoutes = new Hono<AppEnv>()
     })
     .put("/salary-day", isLoggedIn, zValidator("json", salaryDaySchema), async (c) => {
         const { salary_day } = c.req.valid("json");
-        const { id } = c.get("user");
+        const user = c.get("user");
 
-        const result = await updateSalaryDay(db(c.env.DB), id, salary_day);
+        const result = await updateSalaryDay(db(c.env.DB), user.id, salary_day);
+
+        // Regenerate and update auth cookies with new salary_day to avoid stale session cookies
+        const tokenManager = new TokenManager(c.env);
+        const newPayload = {
+            ...user,
+            salary_day: result.salary_day
+        };
+
+        // Try to decode existing refresh token to preserve remember_me & expiration
+        let rememberMe = false;
+        let maxAgeRefresh = 3600 * 24; // default 1 day
+        const cookieNames = getAuthCookies(c.env);
+        if (cookieNames.refresh) {
+            const existingRefreshToken = getCookie(c, cookieNames.refresh);
+            if (existingRefreshToken) {
+                const decoded = await tokenManager.verifyRefreshToken(existingRefreshToken);
+                if (decoded && (decoded as any).exp) {
+                    rememberMe = !!(decoded as any).remember_me;
+                    const timeLeft = (decoded as any).exp - Math.floor(Date.now() / 1000);
+                    if (timeLeft > 0) {
+                        maxAgeRefresh = timeLeft;
+                    }
+                }
+            }
+        }
+
+        const accessToken = await tokenManager.signAccessToken(newPayload);
+        const refreshToken = await tokenManager.signRefreshToken({ ...newPayload, remember_me: rememberMe }, maxAgeRefresh);
+        setAuthCookies(c, { accessToken, refreshToken, maxAgeRefresh });
+
         return c.api.success(result, "Success update salary day.", 200);
     })
     .delete("/logout", isLoggedIn, async (c) => {
