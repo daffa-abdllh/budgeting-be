@@ -101,7 +101,12 @@ export const getAllTransactions = async (
         db,
         transactions,
         whereClause,
-        { page: options.page, limit: options.limit },
+        {
+            page: options.page,
+            limit: options.limit,
+            sortColumn: "created_at",
+            sortOrder: "desc"
+        },
         async (currentIds) => {
             return await db
                 .select({
